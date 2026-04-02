@@ -1,0 +1,71 @@
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+# VBox should be imported from ipywidgets, not IPython.display
+from ipywidgets import VBox
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Get unique characteristic names from df_merged
+unique_characteristics = sorted(df_merged['CharacteristicName'].unique().tolist())
+
+# Create a dropdown widget
+characteristic_dropdown = widgets.Dropdown(
+    options=unique_characteristics,
+    value=unique_characteristics[0], # Set an initial value
+    description='Characteristic:',
+    disabled=False,
+)
+
+# Create an Output widget to hold the plot
+output_plot = widgets.Output()
+
+# Define the plotting function
+def plot_characteristic_trend(selected_characteristic):
+    with output_plot: # Direct output to the output_plot widget
+        clear_output(wait=True)
+
+        df_filtered_char = df_merged[df_merged['CharacteristicName'] == selected_characteristic].copy()
+
+        # Convert 'ResultMeasureValue' to numeric, coercing errors to NaN
+        df_filtered_char['ResultMeasureValue'] = pd.to_numeric(df_filtered_char['ResultMeasureValue'], errors='coerce')
+        # Drop rows where 'ResultMeasureValue' became NaN after conversion
+        df_filtered_char.dropna(subset=['ResultMeasureValue'], inplace=True)
+
+        # Sort by date for proper time series plotting
+        df_filtered_char.sort_values(by='ActivityStartDate', inplace=True)
+
+        if not df_filtered_char.empty:
+            plt.figure(figsize=(15, 8))
+            sns.lineplot(
+                data=df_filtered_char,
+                x='ActivityStartDate',
+                y='ResultMeasureValue',
+                hue='MonitoringLocationName',
+                marker='o',
+                palette='tab10'
+            )
+
+            # Get unit code safely, handling cases where it might be missing or multiple units exist
+            unit_code = ''
+            if not df_filtered_char['ResultMeasure/MeasureUnitCode'].empty:
+                unit_code = df_filtered_char['ResultMeasure/MeasureUnitCode'].iloc[0]
+
+            plt.title(f'Time Series Trend for {selected_characteristic} at Various Monitoring Locations', fontsize=16)
+            plt.xlabel('Activity Start Date', fontsize=12)
+            plt.ylabel(f'{selected_characteristic} Result Measure Value ({unit_code})', fontsize=12)
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            plt.legend(title='Monitoring Location', bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.show()
+        else:
+            print(f"No data available for characteristic: {selected_characteristic}")
+
+# Link the dropdown to the plotting function
+characteristic_dropdown.observe(lambda change: plot_characteristic_trend(change.new), names='value')
+
+# Display the dropdown and the output plot
+display(VBox([characteristic_dropdown, output_plot]))
+
+# Initial plot call to display something when the cell is first run
+plot_characteristic_trend(characteristic_dropdown.value)
