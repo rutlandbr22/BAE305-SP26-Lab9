@@ -1,0 +1,102 @@
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+from ipywidgets import VBox, HBox
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Get unique characteristic names from df_merged
+unique_characteristics = sorted(df_merged['CharacteristicName'].unique().tolist())
+
+# Create two separate dropdown widgets
+characteristic_dropdown_1 = widgets.Dropdown(
+    options=unique_characteristics,
+    value=unique_characteristics[0], # Set an initial value
+    description='Characteristic 1:',
+    disabled=False,
+)
+
+characteristic_dropdown_2 = widgets.Dropdown(
+    options=unique_characteristics,
+    value=unique_characteristics[1] if len(unique_characteristics) > 1 else unique_characteristics[0], # Set a different initial value if possible
+    description='Characteristic 2:',
+    disabled=False,
+)
+
+# Create an Output widget to hold the plots
+output_plot = widgets.Output()
+
+# Define the plotting function for two characteristics
+def plot_two_characteristic_trends(char_name_1, char_name_2):
+    with output_plot:
+        clear_output(wait=True)
+
+        plt.figure(figsize=(18, 8)) # Create a figure to hold both subplots
+
+        # --- Plot for Characteristic 1 ---
+        plt.subplot(1, 2, 1) # 1 row, 2 columns, first plot
+        df_filtered_char_1 = df_merged[df_merged['CharacteristicName'] == char_name_1].copy()
+        df_filtered_char_1['ResultMeasureValue'] = pd.to_numeric(df_filtered_char_1['ResultMeasureValue'], errors='coerce')
+        df_filtered_char_1.dropna(subset=['ResultMeasureValue'], inplace=True)
+        df_filtered_char_1.sort_values(by='ActivityStartDate', inplace=True)
+
+        if not df_filtered_char_1.empty:
+            sns.lineplot(
+                data=df_filtered_char_1,
+                x='ActivityStartDate',
+                y='ResultMeasureValue',
+                hue='MonitoringLocationName',
+                marker='o',
+                palette='tab10'
+            )
+            plt.title(f'Trend for {char_name_1}', fontsize=14)
+            plt.xlabel('Activity Start Date', fontsize=12)
+            unit_code_1 = df_filtered_char_1['ResultMeasure/MeasureUnitCode'].iloc[0] if not df_filtered_char_1['ResultMeasure/MeasureUnitCode'].empty else ''
+            plt.ylabel(f'{char_name_1} Value ({unit_code_1})', fontsize=12)
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.xticks(rotation=45, ha='right')
+            plt.legend(title='Location', bbox_to_anchor=(1.05, 1), loc='upper left')
+        else:
+            plt.text(0.5, 0.5, f"No data for {char_name_1}", horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes, fontsize=12)
+            plt.title(f'Trend for {char_name_1}', fontsize=14)
+
+        # --- Plot for Characteristic 2 ---
+        plt.subplot(1, 2, 2) # 1 row, 2 columns, second plot
+        df_filtered_char_2 = df_merged[df_merged['CharacteristicName'] == char_name_2].copy()
+        df_filtered_char_2['ResultMeasureValue'] = pd.to_numeric(df_filtered_char_2['ResultMeasureValue'], errors='coerce')
+        df_filtered_char_2.dropna(subset=['ResultMeasureValue'], inplace=True)
+        df_filtered_char_2.sort_values(by='ActivityStartDate', inplace=True)
+
+        if not df_filtered_char_2.empty:
+            sns.lineplot(
+                data=df_filtered_char_2,
+                x='ActivityStartDate',
+                y='ResultMeasureValue',
+                hue='MonitoringLocationName',
+                marker='o',
+                palette='tab10'
+            )
+            plt.title(f'Trend for {char_name_2}', fontsize=14)
+            plt.xlabel('Activity Start Date', fontsize=12)
+            unit_code_2 = df_filtered_char_2['ResultMeasure/MeasureUnitCode'].iloc[0] if not df_filtered_char_2['ResultMeasure/MeasureUnitCode'].empty else ''
+            plt.ylabel(f'{char_name_2} Value ({unit_code_2})', fontsize=12)
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.xticks(rotation=45, ha='right')
+            plt.legend(title='Location', bbox_to_anchor=(1.05, 1), loc='upper left')
+        else:
+            plt.text(0.5, 0.5, f"No data for {char_name_2}", horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes, fontsize=12)
+            plt.title(f'Trend for {char_name_2}', fontsize=14)
+
+        plt.tight_layout()
+        plt.show()
+
+# Link the dropdowns to the plotting function
+# Use a lambda to call the plotting function with both current dropdown values
+link_func = lambda change: plot_two_characteristic_trends(characteristic_dropdown_1.value, characteristic_dropdown_2.value)
+characteristic_dropdown_1.observe(link_func, names='value')
+characteristic_dropdown_2.observe(link_func, names='value')
+
+# Display the dropdowns and the output plot
+display(HBox([characteristic_dropdown_1, characteristic_dropdown_2]), output_plot)
+
+# Initial plot call to display something when the cell is first run
+plot_two_characteristic_trends(characteristic_dropdown_1.value, characteristic_dropdown_2.value)
