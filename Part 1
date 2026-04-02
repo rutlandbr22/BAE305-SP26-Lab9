@@ -1,0 +1,35 @@
+import pandas as pd
+import folium
+
+# Load the station data from 'station.csv'
+try:
+    df_stations = pd.read_csv('sample_data/station.csv')
+    print("CSV file loaded successfully. Displaying the first 5 rows:")
+    display(df_stations.head())
+
+    # Use the correct latitude and longitude column names
+    if 'LatitudeMeasure' in df_stations.columns and 'LongitudeMeasure' in df_stations.columns:
+        # Create a base map centered around the average latitude and longitude
+        center_lat = df_stations['LatitudeMeasure'].mean()
+        center_lon = df_stations['LongitudeMeasure'].mean()
+        station_map = folium.Map(location=[center_lat, center_lon], zoom_start=10)
+
+        # Add markers for each station
+        for index, row in df_stations.iterrows():
+            # Use 'MonitoringLocationName' for popup if available, otherwise a generic label
+            popup_text = row.get('MonitoringLocationName', f"Station {index+1}")
+            folium.Marker(
+                location=[row['LatitudeMeasure'], row['LongitudeMeasure']],
+                popup=popup_text
+            ).add_to(station_map)
+
+        print("\nMap created successfully. Displaying the map:")
+        display(station_map)
+    else:
+        print("Error: 'LatitudeMeasure' or 'LongitudeMeasure' columns not found in the CSV. Please check the column names in your 'station.csv' file.")
+        print(f"Available columns: {df_stations.columns.tolist()}")
+
+except FileNotFoundError:
+    print("Error: 'station.csv' not found. Please make sure the file is uploaded to your Colab environment or the path is correct.")
+except Exception as e:
+    print(f"An error occurred: {e}")
