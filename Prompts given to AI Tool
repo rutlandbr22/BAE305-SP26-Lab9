@@ -5,3 +5,20 @@ Tom:
 
 
 Brandon:
+1. Please set up my virtual environment with all the libraries that I will need.
+2. ModuleNotFoundError: No module named 'matplotlib'
+Traceback:
+File "/workspaces/BAE305-SP26-Lab9/streamlit_app.py", line 4, in <module>
+import matplotlib.pyplot as plt. This error keeps popping up so the virtual libray does not have all the modules defined.
+3.Please pull the data from the files without compling in sample_data
+4.ValueError: keyword ha is not recognized; valid keywords are ['size', 'width', 'color', 'tickdir', 'pad', 'labelsize', 'labelcolor', 'labelfontfamily', 'zorder', 'gridOn', 'tick1On', 'tick2On', 'label1On', 'label2On', 'length', 'direction', 'left', 'bottom', 'right', 'top', 'labelleft', 'labelbottom', 'labelright', 'labeltop', 'labelrotation', 'grid_agg_filter', 'grid_alpha', 'grid_animated', 'grid_antialiased', 'grid_clip_box', 'grid_clip_on', 'grid_clip_path', 'grid_color', 'grid_dash_capstyle', 'grid_dash_joinstyle', 'grid_dashes', 'grid_data', 'grid_drawstyle', 'grid_figure', 'grid_fillstyle', 'grid_gapcolor', 'grid_gid', 'grid_in_layout', 'grid_label', 'grid_linestyle', 'grid_linewidth', 'grid_marker', 'grid_markeredgecolor', 'grid_markeredgewidth', 'grid_markerfacecolor', 'grid_markerfacecoloralt', 'grid_markersize', 'grid_markevery', 'grid_mouseover', 'grid_path_effects', 'grid_picker', 'grid_pickradius', 'grid_rasterized', 'grid_sketch_params', 'grid_snap', 'grid_solid_capstyle', 'grid_solid_joinstyle', 'grid_transform', 'grid_url', 'grid_visible', 'grid_xdata', 'grid_ydata', 'grid_zorder', 'grid_aa', 'grid_c', 'grid_ds', 'grid_ls', 'grid_lw', 'grid_mec', 'grid_mew', 'grid_mfc', 'grid_mfcalt', 'grid_ms']
+Traceback:
+File "/workspaces/BAE305-SP26-Lab9/streamlit_app.py", line 80, in <module>
+ax1.tick_params(axis='x', rotation=45, ha='right')
+File "/home/vscode/.local/lib/python3.11/site-packages/matplotlib/axes/_base.py", line 3553, in tick_params
+self.xaxis.set_tick_params(**xkw)
+File "/home/vscode/.local/lib/python3.11/site-packages/matplotlib/axis.py", line 960, in set_tick_params
+kwtrans = self._translate_tick_params(kwargs)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/vscode/.local/lib/python3.11/site-packages/matplotlib/axis.py", line 1109, in _translate_tick_params
+raise ValueError(. Please fix the code so the valueError does not show up for the headings in the excel chart.
