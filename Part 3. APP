@@ -1,0 +1,207 @@
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import folium
+from streamlit_folium import st_folium
+
+# --- Data Loading (Re-run for self-contained Streamlit app) ---
+# In a real Streamlit app, you might cache this data loading.
+@st.cache_data
+def load_data():
+    try:
+        df_stations = pd.read_csv('station.csv')
+        df_narrow = pd.read_csv('narrowresult.csv')
+
+        # Convert 'ActivityStartDate' to datetime objects for df_narrow
+        df_narrow['ActivityStartDate'] = pd.to_datetime(df_narrow['ActivityStartDate'], errors='coerce')
+
+        # Select relevant columns and merge dataframes
+        df_stations_subset = df_stations[['MonitoringLocationIdentifier', 'LatitudeMeasure', 'LongitudeMeasure', 'MonitoringLocationName']].drop_duplicates(subset=['MonitoringLocationIdentifier'])
+        df_narrow_subset = df_narrow[['MonitoringLocationIdentifier', 'CharacteristicName', 'ResultMeasureValue', 'ActivityStartDate', 'ResultMeasure/MeasureUnitCode']]
+
+        df_merged = pd.merge(df_narrow_subset, df_stations_subset, on='MonitoringLocationIdentifier', how='left')
+
+        # Drop rows where location data is missing after merge
+        df_merged.dropna(subset=['LatitudeMeasure', 'LongitudeMeasure', 'ActivityStartDate', 'ResultMeasureValue'], inplace=True)
+
+        # Ensure ResultMeasureValue is numeric
+        df_merged['ResultMeasureValue'] = pd.to_numeric(df_merged['ResultMeasureValue'], errors='coerce')
+        df_merged.dropna(subset=['ResultMeasureValue'], inplace=True)
+
+        return df_merged
+
+    except FileNotFoundError:
+        st.error("Error: 'station.csv' or 'narrowresult.csv' not found. Please ensure the files are in the current directory.")
+        st.stop()
+    except Exception as e:
+        st.error(f"An error occurred during data loading: {e}")
+        st.stop()
+
+df_merged = load_data()
+
+# --- Streamlit App Layout ---
+st.set_page_config(layout="wide")
+st.title("Water Quality Time Series Trends and Monitoring Locations")
+
+if df_merged is not None and not df_merged.empty:
+    unique_characteristics = sorted(df_merged['CharacteristicName'].unique().tolist())
+
+    st.subheader("Time Series Trends")
+    # Use st.columns for side-by-side plots
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.header("Chart 1")
+        selected_char_1 = st.selectbox(
+            'Select Characteristic for Chart 1:',
+            unique_characteristics,
+            index=0, # Default to the first characteristic
+            key='char_select_1'
+        )
+
+        df_filtered_char_1 = df_merged[df_merged['CharacteristicName'] == selected_char_1].copy()
+        
+        # Add value range sliders
+        min_val_1 = df_filtered_char_1['ResultMeasureValue'].min()
+        max_val_1 = df_filtered_char_1['ResultMeasureValue'].max()
+        selected_min_1 = st.slider(f'Min {selected_char_1} Value', min_val_1, max_val_1, min_val_1, key='min_1')
+        selected_max_1 = st.slider(f'Max {selected_char_1} Value', min_val_1, max_val_1, max_val_1, key='max_1')
+        
+        # Filter by selected value range
+        df_filtered_char_1 = df_filtered_char_1[(df_filtered_char_1['ResultMeasureValue'] >= selected_min_1) & (df_filtered_char_1['ResultMeasureValue'] <= selected_max_1)]
+        
+        df_filtered_char_1.sort_values(by='ActivityStartDate', inplace=True)
+
+        fig1, ax1 = plt.subplots(figsize=(10, 6))
+        if not df_filtered_char_1.empty:
+            sns.lineplot(
+                data=df_filtered_char_1,
+                x='ActivityStartDate',
+                y='ResultMeasureValue',
+                hue='MonitoringLocationName',
+                marker='o',
+                palette='tab10',
+                ax=ax1
+            )
+            ax1.set_title(f'Trend for {selected_char_1}', fontsize=14)
+            ax1.set_xlabel('Activity Start Date', fontsize=12)
+            unit_code_1 = df_filtered_char_1['ResultMeasure/MeasureUnitCode'].iloc[0] if not df_filtered_char_1['ResultMeasure/MeasureUnitCode'].empty else ''
+            ax1.set_ylabel(f'{selected_char_1} Value ({unit_code_1})', fontsize=12)
+            ax1.grid(True, linestyle='--', alpha=0.7)
+            ax1.tick_params(axis='x', labelrotation=45)
+            ax1.legend(title='Location', bbox_to_anchor=(1.05, 1), loc='upper left')
+        else:
+            ax1.text(0.5, 0.5, f"No data for {selected_char_1}", horizontalalignment='center', verticalalignment='center', transform=ax1.transAxes, fontsize=12)
+            ax1.set_title(f'Trend for {selected_char_1}', fontsize=14)
+        plt.tight_layout()
+        st.pyplot(fig1)
+
+    with col2:
+        st.header("Chart 2")
+        # Ensure a different default characteristic if available
+        default_index_2 = 1 if len(unique_characteristics) > 1 else 0
+        selected_char_2 = st.selectbox(
+            'Select Characteristic for Chart 2:',
+            unique_characteristics,
+            index=default_index_2,
+            key='char_select_2'
+        )
+
+        df_filtered_char_2 = df_merged[df_merged['CharacteristicName'] == selected_char_2].copy()
+        
+        # Add value range sliders
+        min_val_2 = df_filtered_char_2['ResultMeasureValue'].min()
+        max_val_2 = df_filtered_char_2['ResultMeasureValue'].max()
+        selected_min_2 = st.slider(f'Min {selected_char_2} Value', min_val_2, max_val_2, min_val_2, key='min_2')
+        selected_max_2 = st.slider(f'Max {selected_char_2} Value', min_val_2, max_val_2, max_val_2, key='max_2')
+        
+        # Filter by selected value range
+        df_filtered_char_2 = df_filtered_char_2[(df_filtered_char_2['ResultMeasureValue'] >= selected_min_2) & (df_filtered_char_2['ResultMeasureValue'] <= selected_max_2)]
+        
+        df_filtered_char_2.sort_values(by='ActivityStartDate', inplace=True)
+
+        fig2, ax2 = plt.subplots(figsize=(10, 6))
+        if not df_filtered_char_2.empty:
+            sns.lineplot(
+                data=df_filtered_char_2,
+                x='ActivityStartDate',
+                y='ResultMeasureValue',
+                hue='MonitoringLocationName',
+                marker='o',
+                palette='tab10',
+                ax=ax2
+            )
+            ax2.set_title(f'Trend for {selected_char_2}', fontsize=14)
+            ax2.set_xlabel('Activity Start Date', fontsize=12)
+            unit_code_2 = df_filtered_char_2['ResultMeasure/MeasureUnitCode'].iloc[0] if not df_filtered_char_2['ResultMeasure/MeasureUnitCode'].empty else ''
+            ax2.set_ylabel(f'{selected_char_2} Value ({unit_code_2})', fontsize=12)
+            ax2.grid(True, linestyle='--', alpha=0.7)
+            ax2.tick_params(axis='x', labelrotation=45)
+            ax2.legend(title='Location', bbox_to_anchor=(1.05, 1), loc='upper left')
+        else:
+            ax2.text(0.5, 0.5, f"No data for {selected_char_2}", horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes, fontsize=12)
+            ax2.set_title(f'Trend for {selected_char_2}', fontsize=14)
+        plt.tight_layout()
+        st.pyplot(fig2)
+
+    st.subheader("Monitoring Locations by Characteristic")
+    # Aggregate to get the latest measurement for each station and characteristic
+    df_latest_measurement = df_merged.sort_values(by='ActivityStartDate', ascending=False) \
+                                     .drop_duplicates(subset=['MonitoringLocationIdentifier', 'CharacteristicName'])
+
+    # Filter data for selected characteristics from the charts
+    selected_characteristics = [selected_char_1, selected_char_2]
+    df_map_data = df_latest_measurement[df_latest_measurement['CharacteristicName'].isin(selected_characteristics)]
+    
+    # Further filter by selected value ranges
+    df_map_data = df_map_data[
+        ((df_map_data['CharacteristicName'] == selected_char_1) & (df_map_data['ResultMeasureValue'] >= selected_min_1) & (df_map_data['ResultMeasureValue'] <= selected_max_1)) |
+        ((df_map_data['CharacteristicName'] == selected_char_2) & (df_map_data['ResultMeasureValue'] >= selected_min_2) & (df_map_data['ResultMeasureValue'] <= selected_max_2))
+    ]
+
+    # Create a base map centered around the average latitude and longitude of the selected characteristics' data
+    center_lat = df_map_data['LatitudeMeasure'].mean()
+    center_lon = df_map_data['LongitudeMeasure'].mean()
+    station_characteristic_map = folium.Map(location=[center_lat, center_lon], zoom_start=7)
+
+    # Get unique characteristic names for the selected data
+    map_unique_characteristics = df_map_data['CharacteristicName'].unique()
+
+    for char_name in map_unique_characteristics:
+        # Create a feature group for each characteristic, which can be toggled on/off
+        feature_group = folium.FeatureGroup(name=char_name)
+
+        # Filter data for the current characteristic
+        df_char_filtered = df_map_data[df_map_data['CharacteristicName'] == char_name]
+
+        # Add markers for each unique monitoring location within this characteristic group
+        for index, row in df_char_filtered.iterrows():
+            popup_text = f"<b>Station:</b> {row['MonitoringLocationName']}<br>" \
+                         f"<b>Characteristic:</b> {row['CharacteristicName']}<br>" \
+                         f"<b>Last Measured Value:</b> {row['ResultMeasureValue']} {row['ResultMeasure/MeasureUnitCode']}<br>" \
+                         f"<b>Last Activity Date:</b> {row['ActivityStartDate'].strftime('%Y-%m-%d')}"
+
+            folium.Marker(
+                location=[row['LatitudeMeasure'], row['LongitudeMeasure']],
+                popup=popup_text,
+                tooltip=row['MonitoringLocationName'] # Show station name on hover
+            ).add_to(feature_group)
+
+        # Add the feature group to the map
+        feature_group.add_to(station_characteristic_map)
+
+    # Add a layer control to the map so the user can toggle characteristic layers
+    folium.LayerControl().add_to(station_characteristic_map)
+
+    # Display the map in Streamlit
+    st_folium(station_characteristic_map, width=1200, height=500)
+
+st.markdown("""
+To run this Streamlit app:
+1. Save the code above to a file named `app.py` in your Colab environment.
+2. Open a new terminal in Colab (Tools -> Terminal -> New terminal).
+3. Navigate to the directory where you saved `app.py`.
+4. Run the command: `streamlit run app.py --server.port 8501`
+5. Streamlit will provide a local URL (e.g., `http://localhost:8501`). Copy this URL and paste it into a new browser tab to view your app.
+""")
